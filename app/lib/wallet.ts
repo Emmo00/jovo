@@ -3,6 +3,21 @@ import { cfg } from "./config";
 import { addrVal, readCall, server, sendAndWait } from "./stellar";
 import type { Token } from "./tokens";
 
+const demoWalletListeners = new Set<() => void>();
+
+export function subscribeDemoWallet(listener: () => void) {
+  demoWalletListeners.add(listener);
+  return () => {
+    demoWalletListeners.delete(listener);
+  };
+}
+
+export function demoWalletSnapshot(): string | null {
+  return typeof window === "undefined"
+    ? null
+    : window.sessionStorage.getItem("jovo.demo");
+}
+
 export interface Wallet {
   kind: "freighter" | "demo";
   address: string;
@@ -77,11 +92,13 @@ export async function createDemoWallet(): Promise<Wallet> {
   const keypair = Keypair.random();
   await friendbot(keypair.publicKey());
   sessionStorage.setItem("jovo.demo", keypair.secret());
+  for (const listener of demoWalletListeners) listener();
   return fromKeypair(keypair);
 }
 
-export function restoreDemoWallet(): Wallet | null {
-  const secret = sessionStorage.getItem("jovo.demo");
+export function restoreDemoWallet(
+  secret = sessionStorage.getItem("jovo.demo"),
+): Wallet | null {
   return secret ? fromKeypair(Keypair.fromSecret(secret)) : null;
 }
 
