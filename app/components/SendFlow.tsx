@@ -26,8 +26,8 @@ import { TOKENS, type Token } from "@/lib/tokens";
 import { linkIdOf, newSeed, toB64Url, toHex } from "@/lib/claim";
 
 type Step = "wallet" | "amount" | "expiry" | "creating" | "done" | "error";
-const MAX_AMOUNT = BigInt(1000) * BigInt(10) ** BigInt(7);
 const XLM_RESERVE = BigInt(10) ** BigInt(7);
+const MAX_AMOUNT = cfg.maxLinkAmount * BigInt(10) ** BigInt(7);
 
 export function SendFlow() {
   const [walletOverride, setWallet] = useState<Wallet | null>(null);
@@ -308,7 +308,8 @@ export function SendFlow() {
               amountUnits > BigInt(0) &&
               amountUnits > MAX_AMOUNT && (
                 <p className="err" role="alert">
-                  The maximum link amount is 1,000 {token.symbol}.
+                  The maximum link amount is {cfg.maxLinkAmount.toString()}{" "}
+                  {token.symbol}.
                 </p>
               )}
             {amountUnits !== null &&
