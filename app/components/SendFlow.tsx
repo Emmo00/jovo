@@ -11,7 +11,13 @@ import {
 import { Modal } from "./Modal";
 import { friendly } from "@/lib/errors";
 import { fromUnits, toUnits } from "@/lib/amounts";
-import { bytesVal, addrVal, prepareCall, sendAndWait } from "@/lib/stellar";
+import {
+  bytesVal,
+  addrVal,
+  prepareCall,
+  readCall,
+  sendAndWait,
+} from "@/lib/stellar";
 import {
   connectFreighter,
   createDemoWallet,
@@ -60,6 +66,11 @@ export function SendFlow() {
   const [copyStatus, setCopyStatus] = useState("");
   const heading = useRef<HTMLHeadingElement>(null);
   const retryAction = useRef<(() => void) | null>(null);
+  const pendingLink = useRef<{
+    seed: Uint8Array;
+    linkId: Uint8Array;
+    submitted: boolean;
+  } | null>(null);
 
   useEffect(() => {
     heading.current?.focus();
@@ -149,8 +160,35 @@ export function SendFlow() {
         throw new Error("The escrow contract is not configured.");
       }
 
-      const seed = newSeed();
-      const linkId = linkIdOf(seed);
+      let current = pendingLink.current;
+      if (!current) {
+        const seed = newSeed();
+        current = { seed, linkId: linkIdOf(seed), submitted: false };
+        pendingLink.current = current;
+      }
+      const { seed, linkId } = current;
+
+      if (current.submitted) {
+        const existing = await readCall(
+          wallet.address,
+          cfg.escrowId,
+          "get",
+          [bytesVal(linkId)],
+        );
+        if (existing !== null) {
+          setLinkUrl(
+            `${window.location.origin}/c/${toHex(linkId)}#${toB64Url(seed)}`,
+          );
+          setTransactionHash("");
+          setWarning(
+            "The link exists on-chain, but its transaction could not be confirmed or saved to your dashboard.",
+          );
+          pendingLink.current = null;
+          setStep("done");
+          return;
+        }
+      }
+
       const expiresAt = Math.floor(Date.now() / 1000) + days * 86_400;
       const transaction = await prepareCall(
         wallet.address,
@@ -164,7 +202,9 @@ export function SendFlow() {
           nativeToScVal(BigInt(expiresAt), { type: "u64" }),
         ],
       );
-      const hash = await sendAndWait(await wallet.sign(transaction.toXDR()));
+      const signedXdr = await wallet.sign(transaction.toXDR());
+      current.submitted = true;
+      const hash = await sendAndWait(signedXdr);
       const generatedLink = `${window.location.origin}/c/${toHex(linkId)}#${toB64Url(seed)}`;
       setLinkUrl(generatedLink);
       setTransactionHash(hash);
@@ -186,6 +226,7 @@ export function SendFlow() {
         );
       }
 
+      pendingLink.current = null;
       setStep("done");
     } catch (error) {
       setErrorMessage(friendly(error));
@@ -206,6 +247,7 @@ export function SendFlow() {
   }
 
   function startAnother() {
+    pendingLink.current = null;
     setAmount("");
     setDays(1);
     setToken(TOKENS[0]);
@@ -388,13 +430,15 @@ export function SendFlow() {
               />
               {warning && <p className="err" role="status">{warning}</p>}
               <p className="muted sr-status" aria-live="polite">{copyStatus}</p>
-              <a
-                href={`${cfg.explorer}/tx/${transactionHash}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View transaction
-              </a>
+              {transactionHash && (
+                <a
+                  href={`${cfg.explorer}/tx/${transactionHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View transaction
+                </a>
+              )}
             </div>
             <button type="button" onClick={() => void copyLink()}>
               Copy link
