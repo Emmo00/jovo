@@ -134,3 +134,16 @@ For manual QA, also reopen a claimed link, tamper with a test link fragment, con
 - **Friendbot failures:** the public faucet can be rate-limited or temporarily unavailable. Retry later, avoid repeatedly creating accounts, and make sure the address is a valid testnet key.
 - **MongoDB connection failures:** ensure Docker Desktop is running and `docker compose up -d` completed, or check the `MONGODB_URI` value for the database you intend to use.
 - **Contract tests fail with `link.exe` missing on Windows:** install Visual Studio C++ Build Tools and run cargo commands from its x64 Developer PowerShell.
+
+## Deploying to Vercel
+
+These are instructions for the Vercel project owner. Nothing in this repository has been deployed to Vercel.
+
+1. Create a MongoDB Atlas cluster and database user, and add a network access rule that allows your Vercel deployment to connect. Set `MONGODB_URI` to the Atlas connection string; do not use Docker Compose in production.
+2. Deploy the Stellar Testnet contract, create/fund the relayer, and obtain the XLM and USDC SAC IDs before deploying the app.
+3. In the Vercel project settings, set **Root Directory** to `app` (Case A). Configure every variable listed in `.env.example` for the required Vercel environments. Set `RELAYER_SECRET` and `MONGODB_URI` as sensitive variables.
+4. Fill in the testnet contract and token IDs, Testnet RPC URL and passphrase, USDC issuer, and matching `MAX_LINK_AMOUNT` / `NEXT_PUBLIC_MAX_LINK_AMOUNT`. Never configure mainnet values or leave required IDs blank.
+5. Deploy the app only after the database, contract, and relayer are ready. `NEXT_PUBLIC_*` values are inlined during the build, so redeploy after changing them.
+6. Smoke-test after deployment: create a payment link with a demo wallet, claim it in a private window, and confirm the dashboard shows the final status.
+
+The claim route requests a 60-second function duration. If the Vercel plan limit is lower, set `maxDuration` to the plan limit and change the claim flow to poll `GET /api/links/[id]` for the final status instead of waiting for the claim request to finish.

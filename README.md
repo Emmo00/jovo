@@ -103,6 +103,17 @@ The browser signs the exact concatenation `jovo-claim-v1 || link_id || contract_
 - **Browser amount configuration.** Next.js only exposes `NEXT_PUBLIC_*` variables to client code, so `NEXT_PUBLIC_MAX_LINK_AMOUNT` is used by the send screen alongside `MAX_LINK_AMOUNT`.
 - **No deployments or secrets committed.** Contract deployment, Vercel configuration, and testnet end-to-end checks require local credentials, environment values, and user-controlled services. They were not performed as part of this source-only build.
 
+## Deploying to Vercel
+
+1. Create a MongoDB Atlas database and database user, and configure network access for the Vercel deployment. Docker Compose is for local development only.
+2. Deploy the testnet escrow contract and create/fund the relayer before configuring the app.
+3. Add every variable listed in `.env.example` to the required Vercel environments. Mark `RELAYER_SECRET` and `MONGODB_URI` as sensitive. Do not set example blanks as real values.
+4. Set the Vercel **Root Directory** to `app` (Case A). The project retains the existing Next.js configuration.
+5. `NEXT_PUBLIC_*` values are inlined at build time; redeploy after changing one.
+6. After the account owner deploys, smoke-test: create a link with a demo wallet, claim it in a private window, and confirm the dashboard status.
+
+The claim endpoint has `maxDuration = 60`. If the Vercel plan limit is lower, lower the duration and update the claim UX to poll `GET /api/links/[id]` for the final status instead of waiting synchronously. This repository does not deploy to or modify a Vercel account.
+
 ## License
 
 MIT License. See [LICENSE](./LICENSE).
