@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "contract:test": "cargo test --manifest-path ../contracts/escrow/Cargo.toml",
+    "contract:deploy": "bash ../scripts/deploy.sh",
+    "verify:message": "node --env-file=.env.local --import tsx scripts/verify-message.ts",
+    "e2e": "node --env-file=.env.local --import tsx scripts/e2e.ts"
   },
   "dependencies": {
     "@stellar/freighter-api": "^6.0.1",
