@@ -1,4 +1,3 @@
 # jovo
 
-Send money any where with a simple link
-
+Send money anywhere with a simple link
